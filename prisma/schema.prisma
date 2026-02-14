@@ -1,0 +1,385 @@
+// ApoConnect - Apotheken-Vernetzungsplattform
+// Prisma Schema für SQLite (lokal) / PostgreSQL (Produktion)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== APOTHEKEN (Business Units) ====================
+
+model Pharmacy {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  city        String
+  zipCode     String
+  phone       String?
+  email       String   @unique
+  website     String?
+  description String?
+  logoUrl     String?
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Beziehungen
+  users           User[]
+  posts           Post[]
+  breakoutRooms   BreakoutRoomMember[]
+  ownedRooms      BreakoutRoom[]       @relation("RoomOwner")
+  savedOffers     SavedPartnerOffer[]
+
+  @@index([city])
+  @@index([zipCode])
+}
+
+// ==================== BENUTZER ====================
+
+enum UserRole {
+  OWNER      // Apothekeninhaber - kann Apotheke verwalten
+  MANAGER    // Filialleiter - erweiterte Rechte
+  EMPLOYEE   // Mitarbeiter - Basis-Rechte
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            UserRole  @default(EMPLOYEE)
+  avatarUrl       String?
+  bio             String?
+  position        String?   // z.B. "Apotheker", "PTA", "PKA"
+
+  // 2FA
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?
+
+  // Passwort-Reset
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  // Status
+  isActive        Boolean   @default(true)
+  emailVerified   Boolean   @default(false)
+  verifyToken     String?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Beziehungen
+  pharmacyId      String
+  pharmacy        Pharmacy  @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  posts           Post[]
+  comments        Comment[]
+  likes           Like[]
+  bookmarks       Bookmark[]
+  notifications   Notification[]
+  breakoutRooms   BreakoutRoomMember[]
+  roomMessages    RoomMessage[]
+
+  @@index([email])
+  @@index([pharmacyId])
+}
+
+// ==================== FORUM / POSTS ====================
+
+enum PostVisibility {
+  PUBLIC     // Sichtbar für alle Apotheken
+  VERIFIED   // Nur für verifizierte Apotheken
+  PRIVATE    // Nur für eingeladene Gruppen
+}
+
+model Category {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  icon        String? // Lucide Icon Name
+  color       String? // Hex Color
+  sortOrder   Int     @default(0)
+
+  posts       Post[]
+
+  @@index([slug])
+}
+
+model Post {
+  id          String         @id @default(uuid())
+  title       String
+  content     String         // Markdown-formatiert
+  excerpt     String?        // Auto-generierter Auszug
+  visibility  PostVisibility @default(PUBLIC)
+  isPinned    Boolean        @default(false)
+  viewCount   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Beziehungen
+  authorId    String
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  pharmacyId  String
+  pharmacy    Pharmacy       @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  categoryId  String
+  category    Category       @relation(fields: [categoryId], references: [id])
+
+  tags        PostTag[]
+  comments    Comment[]
+  likes       Like[]
+  bookmarks   Bookmark[]
+
+  // Für Breakout-Room Posts
+  breakoutRoomId String?
+  breakoutRoom   BreakoutRoom? @relation(fields: [breakoutRoomId], references: [id])
+
+  @@index([authorId])
+  @@index([pharmacyId])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([visibility])
+}
+
+model Tag {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  usageCount Int      @default(0)
+
+  posts     PostTag[]
+  offers    OfferTag[]
+
+  @@index([slug])
+  @@index([usageCount])
+}
+
+model PostTag {
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // Antworten auf Kommentare
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+// ==================== BREAKOUT ROOMS ====================
+
+model BreakoutRoom {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isPrivate   Boolean  @default(true)
+  maxMembers  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Ersteller/Owner
+  ownerId     String
+  owner       Pharmacy @relation("RoomOwner", fields: [ownerId], references: [id])
+
+  members     BreakoutRoomMember[]
+  messages    RoomMessage[]
+  posts       Post[]
+
+  @@index([ownerId])
+}
+
+enum RoomMemberRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+model BreakoutRoomMember {
+  id        String         @id @default(uuid())
+  role      RoomMemberRole @default(MEMBER)
+  joinedAt  DateTime       @default(now())
+
+  roomId    String
+  room      BreakoutRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  pharmacyId String
+  pharmacy   Pharmacy      @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model RoomMessage {
+  id        String       @id @default(uuid())
+  content   String
+  createdAt DateTime     @default(now())
+
+  roomId    String
+  room      BreakoutRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([createdAt])
+}
+
+// ==================== PARTNER (Versicherungen, IT-Dienstleister) ====================
+
+enum PartnerType {
+  INSURANCE     // Versicherungen
+  IT_SERVICE    // IT-Dienstleister
+  WHOLESALER    // Großhändler
+  CONSULTING    // Beratung
+  SOFTWARE      // Software-Anbieter
+  OTHER
+}
+
+model Partner {
+  id          String      @id @default(uuid())
+  name        String
+  type        PartnerType
+  description String?
+  logoUrl     String?
+  website     String?
+  email       String      @unique
+  phone       String?
+  verified    Boolean     @default(false)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  offers      PartnerOffer[]
+
+  @@index([type])
+}
+
+model PartnerOffer {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  details     String?  // Markdown
+  price       String?  // z.B. "ab 99€/Monat"
+  validUntil  DateTime?
+  isActive    Boolean  @default(true)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  partnerId   String
+  partner     Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  savedBy     SavedPartnerOffer[]
+  tags        OfferTag[]
+
+  @@index([partnerId])
+  @@index([isActive])
+}
+
+model OfferTag {
+  offerId String
+  offer   PartnerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  tagId   String
+  tag     Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([offerId, tagId])
+}
+
+model SavedPartnerOffer {
+  id         String       @id @default(uuid())
+  savedAt    DateTime     @default(now())
+
+  pharmacyId String
+  pharmacy   Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  offerId    String
+  offer      PartnerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([pharmacyId, offerId])
+}
+
+// ==================== BENACHRICHTIGUNGEN ====================
+
+enum NotificationType {
+  NEW_COMMENT
+  NEW_LIKE
+  NEW_FOLLOWER
+  MENTION
+  ROOM_INVITE
+  PARTNER_OFFER
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Erweiterung für Tag-Offer Beziehung
