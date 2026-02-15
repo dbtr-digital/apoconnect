@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ApoConnect - Apotheken-Vernetzungsplattform
 
-## Getting Started
+Eine Social-Networking-Plattform speziell für deutsche Apotheken zum Wissensaustausch und zur Vernetzung.
 
-First, run the development server:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdbtr-digital%2Fapoconnect&env=DATABASE_URL,DIRECT_URL,AUTH_SECRET&envDescription=Database%20and%20auth%20configuration&envLink=https%3A%2F%2Fgithub.com%2Fdbtr-digital%2Fapoconnect%23environment-variables)
 
+## Features
+
+- **Forum & Feed** - LinkedIn/Instagram-Style Posts mit Auto-Tagging
+- **Apotheken-Profile** - Inhaber, Mitarbeiter, Verifizierung
+- **Breakout Rooms** - Private Gruppen-Diskussionen
+- **Partner-Bereich** - Versicherungen, IT-Dienstleister (getrennt vom Hauptinhalt)
+- **Suche & Tags** - Trending Tags, Volltextsuche
+- **DSGVO-konform** - Deutsche Datenschutzstandards
+
+## Quick Deploy
+
+### 1. Datenbank erstellen (Neon.tech)
+
+1. Gehe zu [neon.tech](https://neon.tech) und erstelle ein kostenloses Konto
+2. Erstelle ein neues Projekt
+3. Kopiere die Connection String
+
+### 2. Deploy auf Vercel
+
+Klicke den Button oben oder:
+
+1. Gehe zu [vercel.com/new](https://vercel.com/new)
+2. Importiere dieses Repository
+3. Setze die Environment Variables (siehe unten)
+4. Deploy!
+
+### 3. Datenbank initialisieren
+
+Nach dem Deploy:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx prisma db push
+npx prisma db seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Beschreibung |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL Connection String (Neon) |
+| `DIRECT_URL` | Direkte DB-Verbindung (same as DATABASE_URL) |
+| `AUTH_SECRET` | Geheimer Schluessel fuer NextAuth.js |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Lokale Entwicklung
 
-## Learn More
+```bash
+# Dependencies installieren
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# Environment Variables setzen
+cp .env.example .env.local
+# Editiere .env.local mit deinen Werten
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Datenbank initialisieren
+npx prisma db push
+npm run db:seed
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Development Server starten
+npm run dev
+```
 
-## Deploy on Vercel
+Oeffne [http://localhost:3000](http://localhost:3000)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Demo-Accounts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Nach dem Seeding verfuegbar:
+
+| Email | Passwort | Rolle |
+|-------|----------|-------|
+| demo@apoconnect.de | demo1234 | Owner |
+| maria.schmidt@apoconnect.de | demo1234 | Owner |
+| thomas.mueller@apoconnect.de | demo1234 | Manager |
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Database**: PostgreSQL (Neon)
+- **ORM**: Prisma
+- **Auth**: NextAuth.js v5
+- **Styling**: Tailwind CSS
+- **UI**: Radix UI Components
+
+## Lizenz
+
+Proprietaer - Alle Rechte vorbehalten
