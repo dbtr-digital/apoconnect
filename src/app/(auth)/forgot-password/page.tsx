@@ -13,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [devResetLink, setDevResetLink] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,10 +27,16 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email })
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
         setError(data.error || "Ein Fehler ist aufgetreten")
         return
+      }
+
+      // DEV MODE: Show reset link if provided
+      if (data.devMode && data.resetLink) {
+        setDevResetLink(data.resetLink)
       }
 
       setSuccess(true)
@@ -55,7 +62,29 @@ export default function ForgotPasswordPage() {
             einen Link zum Zurücksetzen Ihres Passworts gesendet.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {devResetLink && (
+            <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-sm font-medium text-amber-800 mb-2">
+                🔧 DEV-Modus: E-Mail-Inhalt
+              </p>
+              <p className="text-xs text-amber-700 mb-2">
+                Im Produktionsmodus würde diese E-Mail gesendet:
+              </p>
+              <div className="p-3 bg-white rounded border text-xs break-all">
+                <p className="font-medium mb-1">Passwort zurücksetzen</p>
+                <p className="text-gray-600 mb-2">
+                  Klicken Sie auf den folgenden Link:
+                </p>
+                <a
+                  href={devResetLink}
+                  className="text-emerald-600 hover:underline"
+                >
+                  {devResetLink}
+                </a>
+              </div>
+            </div>
+          )}
           <Link href="/login">
             <Button variant="outline" className="w-full">
               <ArrowLeft className="h-4 w-4" />

@@ -29,16 +29,24 @@ export async function POST(request: Request) {
     })
 
     // In Produktion: E-Mail senden
-    // Für Demo: Token in Konsole ausgeben
+    // Für Demo: Token in Response ausgeben
+    const resetLink = `${process.env.AUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`
+
     console.log(`
       ========================================
       PASSWORT-RESET für ${email}
       Token: ${resetToken}
-      Link: http://localhost:3000/reset-password?token=${resetToken}
+      Link: ${resetLink}
       ========================================
     `)
 
-    return NextResponse.json({ success: true })
+    // DEV MODE: Return token info for testing (remove in production!)
+    return NextResponse.json({
+      success: true,
+      devMode: true,
+      message: "E-Mail würde gesendet werden an: " + email,
+      resetLink: resetLink
+    })
   } catch (error) {
     console.error("Forgot password error:", error)
     return NextResponse.json(
